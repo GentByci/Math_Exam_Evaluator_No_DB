@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="MathTestSystem.Application/MathTestSystem.Application.csproj" />
+  <Project Path="MathTestSystem.Domain/MathTestSystem.Domain.csproj" />
+  <Project Path="MathTestSystem.Infrastructure/MathTestSystem.Infrastructure.csproj" />
+  <Project Path="MathTestSystem.MathProcessor/MathTestSystem.MathProcessor.csproj" />
+  <Project Path="MathTestSystem.UI/MathTestSystem.UI.csproj" Id="7c529273-3db9-4819-8992-829f4961b5d7" />
+</Solution>
