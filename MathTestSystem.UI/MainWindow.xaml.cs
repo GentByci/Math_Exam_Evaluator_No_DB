@@ -1,32 +1,44 @@
-﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Xml.Linq;
+using System.Windows.Media;
+using Microsoft.Win32;
+using MathTestSystem.UI.Services;
 
 namespace MathTestSystem.UI
 {
     public partial class MainWindow : Window
     {
+        private DatabaseService dbService;
         private List<TestResult> allResults;
+        private string currentTeacherId;
 
-        public MainWindow()
+        public MainWindow(string teacherId)
         {
             InitializeComponent();
+            dbService = new DatabaseService();
+            currentTeacherId = teacherId;
+
+            // Update window title with teacher ID
+            this.Title = $"Math Test System - Teacher View (ID: {teacherId})";
+
+            // Load data from database on startup if available
+            LoadFromDatabase();
         }
 
-        private void OpenStudentView_Click(object sender, RoutedEventArgs e)
+        private void LoadFromDatabase()
         {
-            StudentView studentView = new StudentView();
-            studentView.Show();
+            if (dbService.HasData())
+            {
+                allResults = dbService.GetAllResults();
+                DisplayGroupedResults();
+            }
         }
 
         private void LoadXML_Click(object sender, RoutedEventArgs e)
         {
-            // Open file dialog
             OpenFileDialog openFileDialog = new OpenFileDialog
             {
                 Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*",
@@ -37,11 +49,27 @@ namespace MathTestSystem.UI
             {
                 try
                 {
-                    // Load and parse XML
-                    LoadXMLFile(openFileDialog.FileName);
+                    // Load XML and save to database
+                    var result = dbService.LoadXMLToDatabase(openFileDialog.FileName);
+                    int newStudents = result.newStudents;
+                    int newExams = result.newExams;
+                    int newTasks = result.newTasks;
 
-                    // Display grouped results
-                    DisplayGroupedResults();
+                    // Show what was added
+                    string message = $"XML loaded successfully!\n\n" +
+                                   $"New Students: {newStudents}\n" +
+                                   $"New Exams: {newExams}\n" +
+                                   $"New Tasks: {newTasks}";
+
+                    if (newExams == 0 && newTasks == 0)
+                    {
+                        message += "\n\nNote: All exams in this file were already loaded previously.";
+                    }
+
+                    MessageBox.Show(message, "XML Loaded", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    // Reload from database to show updated data
+                    LoadFromDatabase();
                 }
                 catch (Exception ex)
                 {
@@ -51,85 +79,44 @@ namespace MathTestSystem.UI
             }
         }
 
-        private void LoadXMLFile(string filePath)
+        private void OpenStudentView_Click(object sender, RoutedEventArgs e)
         {
-            allResults = new List<TestResult>();
+            StudentView studentView = new StudentView();
+            studentView.Show();
+        }
 
-            XDocument doc = XDocument.Load(filePath);
+        private void ClearDatabase_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(
+                "Are you sure you want to clear all data from the database?\n\nThis action cannot be undone.",
+                "Confirm Clear Database",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
 
-            // Navigate through the XML structure
-            var teacher = doc.Element("Teacher");
-            var students = teacher?.Element("Students")?.Elements("Student");
-
-            if (students == null)
+            if (result == MessageBoxResult.Yes)
             {
-                MessageBox.Show("No student data found in XML.", "Warning",
-                                MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+                dbService.ClearDatabase();
+                StudentResultsPanel.Children.Clear();
+                OverallSummaryText.Text = "Database cleared. Load an XML file to begin.";
 
-            foreach (var student in students)
-            {
-                string studentId = student.Attribute("ID")?.Value ?? "Unknown";
-
-                var exams = student.Elements("Exam");
-
-                foreach (var exam in exams)
-                {
-                    var tasks = exam.Elements("Task");
-
-                    foreach (var task in tasks)
-                    {
-                        string taskContent = task.Value.Trim();
-
-                        // Parse "2+3/6-4 = 74" format
-                        var parts = taskContent.Split('=');
-
-                        if (parts.Length == 2)
-                        {
-                            string expression = parts[0].Trim();
-                            string studentAnswer = parts[1].Trim();
-
-                            // Calculate correct answer
-                            string correctAnswer = EvaluateExpression(expression);
-
-                            // Check if correct
-                            bool isCorrect = studentAnswer.Equals(correctAnswer, StringComparison.OrdinalIgnoreCase);
-
-                            allResults.Add(new TestResult
-                            {
-                                Id = studentId,
-                                Expression = expression,
-                                StudentAnswer = studentAnswer,
-                                CorrectAnswer = correctAnswer,
-                                IsCorrect = isCorrect
-                            });
-                        }
-                    }
-                }
+                MessageBox.Show("Database cleared successfully.", "Success",
+                                MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
-        private string EvaluateExpression(string expression)
+        private void Logout_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                // Use DataTable to compute the expression
-                var table = new DataTable();
-                var result = table.Compute(expression, string.Empty);
+            var result = MessageBox.Show(
+                "Are you sure you want to logout?",
+                "Confirm Logout",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
 
-                // Format the result
-                if (result is double d)
-                {
-                    // Remove unnecessary decimals
-                    return d % 1 == 0 ? ((int)d).ToString() : d.ToString("G");
-                }
-
-                return result.ToString();
-            }
-            catch
+            if (result == MessageBoxResult.Yes)
             {
-                return "Error";
+                LoginWindow loginWindow = new LoginWindow();
+                loginWindow.Show();
+                this.Close();
             }
         }
 
@@ -139,8 +126,7 @@ namespace MathTestSystem.UI
 
             if (allResults == null || !allResults.Any())
             {
-                MessageBox.Show("No results to display.", "Information",
-                                MessageBoxButton.OK, MessageBoxImage.Information);
+                OverallSummaryText.Text = "No data available. Load an XML file to begin.";
                 return;
             }
 
@@ -178,11 +164,11 @@ namespace MathTestSystem.UI
         {
             var border = new Border
             {
-                BorderBrush = System.Windows.Media.Brushes.Gray,
+                BorderBrush = Brushes.Gray,
                 BorderThickness = new Thickness(1),
                 Margin = new Thickness(0, 0, 0, 15),
                 Padding = new Thickness(10),
-                Background = System.Windows.Media.Brushes.White
+                Background = Brushes.White
             };
 
             var stackPanel = new StackPanel();
@@ -192,7 +178,7 @@ namespace MathTestSystem.UI
             {
                 Orientation = Orientation.Horizontal,
                 Margin = new Thickness(0, 0, 0, 10),
-                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(240, 240, 240))
+                Background = new SolidColorBrush(Color.FromRgb(240, 240, 240))
             };
             headerPanel.Height = 40;
 
@@ -210,7 +196,7 @@ namespace MathTestSystem.UI
             {
                 Text = $"Score: {correctCount}/{totalCount} ({percentage:F1}%)",
                 FontSize = 14,
-                Foreground = percentage >= 70 ? System.Windows.Media.Brushes.Green : System.Windows.Media.Brushes.Red,
+                Foreground = percentage >= 70 ? Brushes.Green : Brushes.Red,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 10, 10, 10)
             };
@@ -266,15 +252,5 @@ namespace MathTestSystem.UI
 
             return border;
         }
-    }
-
-    // TestResult class
-    public class TestResult
-    {
-        public string Id { get; set; }
-        public string Expression { get; set; }
-        public string StudentAnswer { get; set; }
-        public string CorrectAnswer { get; set; }
-        public bool IsCorrect { get; set; }
     }
 }

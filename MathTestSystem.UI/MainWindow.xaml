@@ -1,7 +1,8 @@
 ﻿<Window x:Class="MathTestSystem.UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Math Test System - Teacher View" Height="600" Width="900">
+        Title="Math Test System - Teacher View" Height="600" Width="900"
+        WindowStartupLocation="CenterScreen">
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -9,32 +10,76 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Load Buttons -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-            <Button Content="Load XML (Teacher View)" 
-                    Click="LoadXML_Click" 
-                    Padding="15,10" 
-                    Margin="0,0,10,0"
-                    Background="#007ACC"
-                    Foreground="White"
-                    BorderThickness="0"
-                    FontSize="14"
-                    Cursor="Hand"/>
+        <!-- Control Buttons -->
+        <Border Grid.Row="0" 
+                BorderBrush="#CCCCCC" 
+                BorderThickness="0,0,0,1" 
+                Padding="0,0,0,10" 
+                Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-            <Button Content="Open Student View" 
-                    Click="OpenStudentView_Click" 
-                    Padding="15,10"
-                    Background="#4CAF50"
-                    Foreground="White"
-                    BorderThickness="0"
-                    FontSize="14"
-                    Cursor="Hand"/>
-        </StackPanel>
+                <!-- Left side buttons -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <Button Content="📁 Load XML File" 
+                            Click="LoadXML_Click" 
+                            Padding="15,10" 
+                            Margin="0,0,10,0"
+                            Background="#007ACC"
+                            Foreground="White"
+                            BorderThickness="0"
+                            FontSize="14"
+                            Cursor="Hand"
+                            ToolTip="Load exam data from XML file (adds new exams only)"/>
+
+                    <Button Content="👤 Open Student View" 
+                            Click="OpenStudentView_Click" 
+                            Padding="15,10"
+                            Margin="0,0,10,0"
+                            Background="#4CAF50"
+                            Foreground="White"
+                            BorderThickness="0"
+                            FontSize="14"
+                            Cursor="Hand"
+                            ToolTip="Open student portal to view individual results"/>
+
+                    <Button Content="🗑️ Clear Database" 
+                            Click="ClearDatabase_Click" 
+                            Padding="15,10"
+                            Margin="0,0,10,0"
+                            Background="#F44336"
+                            Foreground="White"
+                            BorderThickness="0"
+                            FontSize="14"
+                            Cursor="Hand"
+                            ToolTip="Remove all data from database"/>
+                </StackPanel>
+
+                <!-- Right side button - Logout -->
+                <Button Grid.Column="1"
+                        Content="🚪 Logout" 
+                        Click="Logout_Click" 
+                        Padding="15,10"
+                        Background="#FF9800"
+                        Foreground="White"
+                        BorderThickness="0"
+                        FontSize="14"
+                        Cursor="Hand"
+                        ToolTip="Return to login screen"/>
+            </Grid>
+        </Border>
 
         <!-- ScrollViewer for Student Results -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel x:Name="StudentResultsPanel">
-                <!-- Student results will be added here dynamically -->
+                <TextBlock Text="📊 Loading data from database..." 
+                           FontSize="16" 
+                           Foreground="#999"
+                           HorizontalAlignment="Center"
+                           Margin="20"/>
             </StackPanel>
         </ScrollViewer>
 
@@ -51,7 +96,8 @@
                            FontSize="16" 
                            Margin="0,0,0,5"/>
                 <TextBlock x:Name="OverallSummaryText" 
-                           FontSize="14"/>
+                           FontSize="14"
+                           Text="Loading..."/>
             </StackPanel>
         </Border>
     </Grid>

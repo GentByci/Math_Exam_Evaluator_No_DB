@@ -1,44 +1,53 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Xml.Linq;
-using Microsoft.Win32;
+using MathTestSystem.UI.Services;
 
 namespace MathTestSystem.UI
 {
     public partial class StudentView : Window
     {
-        private string loadedXmlFilePath;
-        private List<StudentTaskResult> allTasks;
+        private DatabaseService dbService;
+        private List<StudentTaskResult> studentTasks;
+        private bool isLoggedIn;
 
+        // Constructor when opened from login (with student ID)
+        public StudentView(string studentId)
+        {
+            InitializeComponent();
+            dbService = new DatabaseService();
+            isLoggedIn = true;
+            
+            // Update window title
+            this.Title = $"Student Results - {studentId}";
+            
+            // Hide the input section and show logout button
+            InputSection.Visibility = Visibility.Collapsed;
+            LogoutButton.Visibility = Visibility.Visible;
+            
+            // Auto-load results
+            StudentIdTextBox.Text = studentId;
+            LoadStudentResults();
+        }
+
+        // Constructor when opened from teacher view (without student ID)
         public StudentView()
         {
             InitializeComponent();
-        }
-
-        private void LoadFile_Click(object sender, RoutedEventArgs e)
-        {
-            OpenFileDialog openFileDialog = new OpenFileDialog
+            dbService = new DatabaseService();
+            isLoggedIn = false;
+            
+            // Show input section, hide logout button
+            InputSection.Visibility = Visibility.Visible;
+            LogoutButton.Visibility = Visibility.Collapsed;
+            
+            // Check if database has data
+            if (!dbService.HasData())
             {
-                Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*",
-                Title = "Select Test Results XML File"
-            };
-
-            if (openFileDialog.ShowDialog() == true)
-            {
-                loadedXmlFilePath = openFileDialog.FileName;
-                FilePathText.Text = $"Loaded: {System.IO.Path.GetFileName(loadedXmlFilePath)}";
-                FilePathText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
-
-                // If student ID is already entered, load results automatically
-                if (!string.IsNullOrWhiteSpace(StudentIdTextBox.Text))
-                {
-                    LoadStudentResults();
-                }
+                NoResultsText.Text = "No exam data available in database.\n\nPlease ask your teacher to load exam results first.";
             }
         }
 
@@ -55,6 +64,22 @@ namespace MathTestSystem.UI
             }
         }
 
+        private void Logout_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(
+                "Are you sure you want to logout?",
+                "Confirm Logout",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                LoginWindow loginWindow = new LoginWindow();
+                loginWindow.Show();
+                this.Close();
+            }
+        }
+
         private void LoadStudentResults()
         {
             string studentId = StudentIdTextBox.Text.Trim();
@@ -66,16 +91,17 @@ namespace MathTestSystem.UI
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(loadedXmlFilePath))
+            if (!dbService.HasData())
             {
-                MessageBox.Show("Please load an XML file first.", "No File Loaded",
-                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("No exam data available in database.\n\nPlease ask your teacher to load exam results first.",
+                                "No Data",
+                                MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             try
             {
-                LoadXMLDataForStudent(studentId);
+                studentTasks = dbService.GetStudentResults(studentId);
                 DisplayStudentResults(studentId);
             }
             catch (Exception ex)
@@ -85,85 +111,13 @@ namespace MathTestSystem.UI
             }
         }
 
-        private void LoadXMLDataForStudent(string studentId)
-        {
-            allTasks = new List<StudentTaskResult>();
-
-            XDocument doc = XDocument.Load(loadedXmlFilePath);
-
-            var teacher = doc.Element("Teacher");
-            var students = teacher?.Element("Students")?.Elements("Student");
-
-            if (students == null)
-            {
-                throw new Exception("No student data found in XML file.");
-            }
-
-            // Find the specific student
-            var student = students.FirstOrDefault(s => s.Attribute("ID")?.Value == studentId);
-
-            if (student == null)
-            {
-                throw new Exception($"Student ID '{studentId}' not found in the XML file.");
-            }
-
-            var exams = student.Elements("Exam");
-            int taskCounter = 1;
-
-            foreach (var exam in exams)
-            {
-                var tasks = exam.Elements("Task");
-
-                foreach (var task in tasks)
-                {
-                    string taskContent = task.Value.Trim();
-                    var parts = taskContent.Split('=');
-
-                    if (parts.Length == 2)
-                    {
-                        string expression = parts[0].Trim();
-                        string studentAnswer = parts[1].Trim();
-                        string correctAnswer = EvaluateExpression(expression);
-                        bool isCorrect = studentAnswer.Equals(correctAnswer, StringComparison.OrdinalIgnoreCase);
-
-                        allTasks.Add(new StudentTaskResult
-                        {
-                            TaskNumber = taskCounter++,
-                            Expression = expression,
-                            StudentAnswer = studentAnswer,
-                            CorrectAnswer = correctAnswer,
-                            IsCorrect = isCorrect
-                        });
-                    }
-                }
-            }
-        }
-
-        private string EvaluateExpression(string expression)
-        {
-            try
-            {
-                var table = new DataTable();
-                var result = table.Compute(expression, string.Empty);
-
-                if (result is double d)
-                {
-                    return d % 1 == 0 ? ((int)d).ToString() : d.ToString("G");
-                }
-
-                return result.ToString();
-            }
-            catch
-            {
-                return "Error";
-            }
-        }
-
         private void DisplayStudentResults(string studentId)
         {
-            if (allTasks == null || !allTasks.Any())
+            if (studentTasks == null || !studentTasks.Any())
             {
-                NoResultsText.Text = $"No results found for Student ID: {studentId}";
+                NoResultsText.Text = $"No results found for Student ID: {studentId}\n\n" +
+                                   $"Available Student IDs:\n" +
+                                   string.Join(", ", dbService.GetAllStudentIds());
                 NoResultsText.Visibility = Visibility.Visible;
                 ResultsDataGrid.Visibility = Visibility.Collapsed;
                 ScoreSummaryBorder.Visibility = Visibility.Collapsed;
@@ -171,8 +125,8 @@ namespace MathTestSystem.UI
             }
 
             // Calculate statistics
-            int totalTasks = allTasks.Count;
-            int correctCount = allTasks.Count(t => t.IsCorrect);
+            int totalTasks = studentTasks.Count;
+            int correctCount = studentTasks.Count(t => t.IsCorrect);
             double percentage = (double)correctCount / totalTasks * 100;
 
             // Update summary
@@ -201,26 +155,10 @@ namespace MathTestSystem.UI
             }
 
             // Show results
-            ResultsDataGrid.ItemsSource = allTasks;
+            ResultsDataGrid.ItemsSource = studentTasks;
             ResultsDataGrid.Visibility = Visibility.Visible;
             ScoreSummaryBorder.Visibility = Visibility.Visible;
             NoResultsText.Visibility = Visibility.Collapsed;
         }
-    }
-
-    // Model class for student task results
-    public class StudentTaskResult
-    {
-        public int TaskNumber { get; set; }
-        public string Expression { get; set; }
-        public string StudentAnswer { get; set; }
-        public string CorrectAnswer { get; set; }
-        public bool IsCorrect { get; set; }
-
-        public string ResultText => IsCorrect ? "✓ Correct" : "✗ Wrong";
-
-        public Brush ResultColor => IsCorrect
-            ? new SolidColorBrush(Color.FromRgb(76, 175, 80))  // Green
-            : new SolidColorBrush(Color.FromRgb(244, 67, 54)); // Red
     }
 }

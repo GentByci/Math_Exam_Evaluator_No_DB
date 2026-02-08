@@ -8,24 +8,42 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Title -->
-        <TextBlock Grid.Row="0" 
-                   Text="Student Test Results" 
-                   FontSize="24" 
-                   FontWeight="Bold" 
-                   HorizontalAlignment="Center"
-                   Margin="0,0,0,20"/>
+        <!-- Title with Logout Button -->
+        <Grid Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Student Test Results" 
+                       FontSize="24" 
+                       FontWeight="Bold" 
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
 
-        <!-- Student ID Input Section -->
-        <Border Grid.Row="1" 
+            <!-- Logout Button (hidden by default, shown when logged in) -->
+            <Button x:Name="LogoutButton"
+                    Content="🚪 Logout"
+                    Click="Logout_Click"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Padding="15,8"
+                    Background="#FF9800"
+                    Foreground="White"
+                    BorderThickness="0"
+                    FontSize="13"
+                    Cursor="Hand"
+                    Visibility="Collapsed"/>
+        </Grid>
+
+        <!-- Student ID Input Section (shown when opened from teacher view) -->
+        <Border x:Name="InputSection"
+                Grid.Row="1" 
                 BorderBrush="#CCCCCC" 
                 BorderThickness="1" 
                 Padding="15" 
                 Margin="0,0,0,20"
-                Background="#F8F8F8">
+                Background="#F8F8F8"
+                Visibility="Visible">
             <StackPanel>
                 <TextBlock Text="Enter Your Student ID:" 
                            FontSize="16" 
@@ -36,7 +54,6 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <TextBox x:Name="StudentIdTextBox" 
@@ -45,37 +62,20 @@
                              Padding="8"
                              VerticalContentAlignment="Center"
                              Margin="0,0,10,0"
-                             KeyDown="StudentIdTextBox_KeyDown"/>
+                             KeyDown="StudentIdTextBox_KeyDown"
+                             ToolTip="Enter your student ID and press Enter"/>
 
                     <Button x:Name="LoadResultsButton"
                             Grid.Column="1"
-                            Content="Load Results" 
+                            Content="View My Results" 
                             Click="LoadResults_Click" 
                             Padding="20,8"
                             FontSize="14"
                             Background="#007ACC"
                             Foreground="White"
                             BorderThickness="0"
-                            Cursor="Hand"
-                            Margin="0,0,10,0"/>
-
-                    <Button x:Name="LoadFileButton"
-                            Grid.Column="2"
-                            Content="Browse XML File..." 
-                            Click="LoadFile_Click" 
-                            Padding="20,8"
-                            FontSize="14"
-                            Background="#4CAF50"
-                            Foreground="White"
-                            BorderThickness="0"
                             Cursor="Hand"/>
                 </Grid>
-
-                <TextBlock x:Name="FilePathText"
-                           Margin="0,10,0,0"
-                           FontSize="12"
-                           Foreground="#666"
-                           Text="No file loaded"/>
             </StackPanel>
         </Border>
 
@@ -102,7 +102,7 @@
         </Border>
 
         <!-- Results DataGrid -->
-        <Border Grid.Row="3" 
+        <Border Grid.Row="4" 
                 BorderBrush="#CCCCCC" 
                 BorderThickness="1">
             <DataGrid x:Name="ResultsDataGrid"
@@ -145,8 +145,8 @@
 
         <!-- No Results Message -->
         <TextBlock x:Name="NoResultsText"
-                   Grid.Row="3"
-                   Text="Enter your Student ID and load an XML file to view your results."
+                   Grid.Row="4"
+                   Text="Enter your Student ID to view your results."
                    FontSize="16"
                    Foreground="#999"
                    HorizontalAlignment="Center"
